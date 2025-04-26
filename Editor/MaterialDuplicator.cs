@@ -72,7 +72,67 @@ namespace UniVCC
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            return AssetDatabase.LoadAssetAtPath<Material>(destPath);
+            Material mater = AssetDatabase.LoadAssetAtPath<Material>(destPath);
+
+            if (mater != null)
+            {
+                // Copy textures from the original material to the new one
+                foreach (var property in mater.GetTexturePropertyNames())
+                {
+                    Texture texture = mater.GetTexture(property);
+                    if (texture != null)
+                    {
+                        Texture newTexture = CopyTexture(material.name, texture);
+                        mater.SetTexture(property, newTexture);
+                    }
+                }
+
+                // Save the modified material
+                EditorUtility.SetDirty(mater);
+                AssetDatabase.SaveAssets();
+            }
+
+            return mater;
+        }
+
+        private Texture CopyTexture(string materialName, Texture tx)
+        {
+            if (tx == null) return null;
+
+            string sourcePath = AssetDatabase.GetAssetPath(tx);
+            if (string.IsNullOrEmpty(sourcePath))
+            {
+                Debug.LogWarning($"Texture '{tx.name}' is not a saved asset. Skipping.");
+                return tx;
+            }
+            
+            // get file extension from source path
+            string extension = Path.GetExtension(sourcePath);
+
+            string materialsDir = $"Assets/_UniVCC-Avatars/{avatarName}/Textures/{materialName}";
+            Directory.CreateDirectory(materialsDir); // creates full path if needed
+
+            string destPath = $"{materialsDir}/{tx.name}{extension}";
+
+            if (File.Exists(destPath))
+            {
+                var tex = AssetDatabase.LoadAssetAtPath<Texture>(destPath);
+                if (tex != null)
+                {
+                    Debug.Log($"Texture '{destPath}' already exists. Reusing!");
+                    return tex;
+                }
+            }
+
+            destPath = AssetDatabase.GenerateUniqueAssetPath(destPath);
+
+            Debug.Log($"Copying texture '{sourcePath}' to '{destPath}'");
+
+            AssetDatabase.CopyAsset(sourcePath, destPath);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            return AssetDatabase.LoadAssetAtPath<Texture>(destPath);
         }
     }
 
