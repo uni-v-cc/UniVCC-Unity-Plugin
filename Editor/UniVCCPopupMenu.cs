@@ -87,7 +87,9 @@ namespace UniVCC
                     duplicator.VisitGameObject(instance);
                     
                     Undo.RegisterCreatedObjectUndo(instance, "Create Prefab");
-                    Selection.activeGameObject = instance; // Optionally select the new object
+                    
+                    if(Selection.activeGameObject != null && !data.isAvatar) instance.transform.SetParent(Selection.activeGameObject.transform, worldPositionStays: true);
+                    Selection.activeGameObject = instance;
                 }
             }
             else Debug.LogError("Prefab not found: " + prefabName);
