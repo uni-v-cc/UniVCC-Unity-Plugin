@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35931.197 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniVCC-Resolver", "UniVCC-Resolver.csproj", "{166E2B7F-81B6-47FF-95B7-AC6971A21B48}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{166E2B7F-81B6-47FF-95B7-AC6971A21B48}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{166E2B7F-81B6-47FF-95B7-AC6971A21B48}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{166E2B7F-81B6-47FF-95B7-AC6971A21B48}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{166E2B7F-81B6-47FF-95B7-AC6971A21B48}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4FF6A2E8-F944-406D-A8A0-42D4725D7D9C}
+	EndGlobalSection
+EndGlobal

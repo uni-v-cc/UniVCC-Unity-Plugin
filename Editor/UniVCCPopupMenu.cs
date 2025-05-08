@@ -23,21 +23,21 @@ namespace UniVCC
         private string[] prefabList;
         private int selectedPrefabIndex = 0;
 
-        private int ComparePackages(UniVCCAssetPackage a, UniVCCAssetPackage b)
-        {
-            int prefAvi = preferAvatar ? -1 : 1;
-            int aviA = (a.isAvatar ? 1 : -1) * prefAvi;
-            int aviB = (b.isAvatar ? 1 : -1) * prefAvi;
-            return aviA.CompareTo(aviB);
-        }
-
         private void OnEnable()
         {
             preferAvatar = Selection.activeGameObject == null || !HasDescriptorInParents(Selection.activeGameObject.transform);
 
             List<UniVCCAssetPackage> packages = new List<UniVCCAssetPackage>();
             packages.AddRange(UniVCCAssetPackage.GetAllAssetPackages());
-            packages.Sort(ComparePackages);
+            if (!preferAvatar) // We're currently inspecting an avatar object, let's hide avatars:
+                packages.RemoveAll(a => a.isAvatar);
+            packages.Sort((a, b) =>
+            {
+                int prefAvi = preferAvatar ? -1 : 1;
+                int aviA = (a.isAvatar ? 1 : -1) * prefAvi;
+                int aviB = (b.isAvatar ? 1 : -1) * prefAvi;
+                return aviA.CompareTo(aviB);
+            });
             assetPackages = packages.ToArray();
 
             assetPackageNames = new string[assetPackages.Length];
