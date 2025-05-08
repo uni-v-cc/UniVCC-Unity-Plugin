@@ -1,17 +1,20 @@
 using UnityEditor;
 using UnityEngine;
 using System.IO;
+using VRC.SDK3.Avatars.Components;
+using System.Collections.Generic;
 
 namespace UniVCC
 {
     public class UniVCCPopupMenu : EditorWindow
     {
-        [MenuItem("GameObject/Uni-V.CC/Import Prefab", false, 0)]
+        [MenuItem("GameObject/Uni-V.CC Asset", false, 0)]
         public static void CreatePrefabFromAssetPackage()
         {
-            UniVCCPopupMenu window = EditorWindow.GetWindow<UniVCCPopupMenu>("Select Prefab");
-            window.Show();
+            EditorWindow.GetWindow<UniVCCPopupMenu>("Select Asset").Show();
         }
+
+        private bool preferAvatar;
 
         private int selectedPackageIndex = 0;
         private UniVCCAssetPackage[] assetPackages;
@@ -20,9 +23,23 @@ namespace UniVCC
         private string[] prefabList;
         private int selectedPrefabIndex = 0;
 
+        private int ComparePackages(UniVCCAssetPackage a, UniVCCAssetPackage b)
+        {
+            int prefAvi = preferAvatar ? -1 : 1;
+            int aviA = (a.isAvatar ? 1 : -1) * prefAvi;
+            int aviB = (b.isAvatar ? 1 : -1) * prefAvi;
+            return aviA.CompareTo(aviB);
+        }
+
         private void OnEnable()
         {
-            assetPackages = UniVCCAssetPackage.GetAllAssetPackages();
+            preferAvatar = Selection.activeGameObject == null || !HasDescriptorInParents(Selection.activeGameObject.transform);
+
+            List<UniVCCAssetPackage> packages = new List<UniVCCAssetPackage>();
+            packages.AddRange(UniVCCAssetPackage.GetAllAssetPackages());
+            packages.Sort(ComparePackages);
+            assetPackages = packages.ToArray();
+
             assetPackageNames = new string[assetPackages.Length];
             for (int i = 0; i < assetPackages.Length; i++)
             {
@@ -40,7 +57,7 @@ namespace UniVCC
             }
 
             // Display the list of prefabs in a dropdown
-            EditorGUILayout.LabelField("Select a Package");
+            EditorGUILayout.LabelField("Select Asset Package");
             selectedPackageIndex = EditorGUILayout.Popup(selectedPackageIndex, assetPackageNames);
 
             if (selectedPackageIndex >= 0 && selectedPackageIndex < assetPackages.Length)
@@ -53,7 +70,7 @@ namespace UniVCC
                     prefabNames[i] = Path.GetFileNameWithoutExtension(prefabList[i].Replace('|', '/'));
                 }
 
-                EditorGUILayout.LabelField("Select a Variant");
+                EditorGUILayout.LabelField("Select Asset Variant");
                 selectedPrefabIndex = EditorGUILayout.Popup(selectedPrefabIndex, prefabNames);
             }
 
@@ -93,6 +110,17 @@ namespace UniVCC
                 }
             }
             else Debug.LogError("Prefab not found: " + prefabName);
+        }
+
+        private static bool HasDescriptorInParents(Transform tf)
+        {
+            while (tf != null)
+            {
+                if (tf.GetComponent(typeof(VRCAvatarDescriptor)) != null)
+                    return true;
+                tf = tf.parent;
+            }
+            return false;
         }
     }
 }
