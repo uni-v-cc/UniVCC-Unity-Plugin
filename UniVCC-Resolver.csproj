@@ -57,17 +57,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Editor\AssetPackageEditor.cs" />
-    <Compile Include="Editor\MaterialDuplicator.cs" />
-    <Compile Include="Editor\PackageChangeWatcher.cs" />
-    <Compile Include="Editor\UniVCCAssetPackage.cs" />
-    <Compile Include="Editor\UniVCCPopupMenu.cs" />
-    <Compile Include="Editor\UVCCMenu.cs" />
+    <Compile Include="UnityPlugin\Editor\AssetPackageEditor.cs" />
+    <Compile Include="UnityPlugin\Editor\MaterialDuplicator.cs" />
+    <Compile Include="UnityPlugin\Editor\PackageChangeWatcher.cs" />
+    <Compile Include="UnityPlugin\Editor\UniVCCAssetPackage.cs" />
+    <Compile Include="UnityPlugin\Editor\UniVCCPopupMenu.cs" />
+    <Compile Include="UnityPlugin\Editor\UVCCMenu.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Resources\univcc.png" />
-    <Content Include="package.json" />
+    <Content Include="UnityPlugin\Resources\univcc.png" />
+    <Content Include="UnityPlugin\package.json" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

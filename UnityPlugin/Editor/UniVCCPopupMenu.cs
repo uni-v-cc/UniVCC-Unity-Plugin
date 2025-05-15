@@ -22,6 +22,7 @@ namespace UniVCC
 
         private string[] prefabList;
         private int selectedPrefabIndex = 0;
+        private bool copyMaterials = true;
 
         private void OnEnable()
         {
@@ -74,6 +75,8 @@ namespace UniVCC
                 selectedPrefabIndex = EditorGUILayout.Popup(selectedPrefabIndex, prefabNames);
             }
 
+            copyMaterials = EditorGUILayout.Toggle("Copy Materials", copyMaterials);
+
             // Create the 'Create' and 'Cancel' buttons
             GUILayout.Space(20);
             if (GUILayout.Button("Create"))
@@ -100,8 +103,11 @@ namespace UniVCC
                 Debug.Log(instance);
                 if (instance != null)
                 {
-                    MaterialDuplicator duplicator = new MaterialDuplicator(data.packageName);
-                    duplicator.VisitGameObject(instance);
+                    if(copyMaterials)
+                    {
+                        MaterialDuplicator duplicator = new MaterialDuplicator(data.packageName);
+                        duplicator.VisitGameObject(instance);
+                    }
                     
                     Undo.RegisterCreatedObjectUndo(instance, "Create Prefab");
                     

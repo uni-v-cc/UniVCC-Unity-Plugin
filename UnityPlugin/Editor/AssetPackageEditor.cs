@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.IO;
+using System;
 
 namespace UniVCC
 {
@@ -32,7 +33,7 @@ namespace UniVCC
             GUIStyle style = new GUIStyle(GUI.skin.label);
             style.richText = true;
 
-            data.prefabs = new string[EditorGUILayout.IntField("Prefab Count", oldPrefabs.Length)];
+            data.prefabs = new string[Math.Max(0, Math.Min(32, EditorGUILayout.IntField("Prefab Count", oldPrefabs.Length)))];
             for (int i = 0; i < data.prefabs.Length; i++)
             {
                 EditorGUILayout.BeginHorizontal();
