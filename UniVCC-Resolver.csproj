@@ -59,10 +59,10 @@
   <ItemGroup>
     <Compile Include="UnityPlugin\Editor\AssetPackageEditor.cs" />
     <Compile Include="UnityPlugin\Editor\MaterialDuplicator.cs" />
-    <Compile Include="UnityPlugin\Editor\PackageChangeWatcher.cs" />
+    <Compile Include="Unused\PackageChangeWatcher.cs" />
     <Compile Include="UnityPlugin\Editor\UniVCCAssetPackage.cs" />
     <Compile Include="UnityPlugin\Editor\UniVCCPopupMenu.cs" />
-    <Compile Include="UnityPlugin\Editor\UVCCMenu.cs" />
+    <Compile Include="Unused\UVCCMenu.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
