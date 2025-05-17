@@ -7,6 +7,7 @@ namespace UniVCC
 {
     public class MaterialDuplicator
     {
+        public static readonly string COMMON_PATH = "Assets/!Uni-V.CC Packages";
         private static List<IMaterialScanner> instances = new List<IMaterialScanner>();
         protected string avatarName;
 
@@ -49,7 +50,7 @@ namespace UniVCC
                 return material;
             }
 
-            string materialsDir = $"Assets/_UniVCC-Avatars/{avatarName}/Materials";
+            string materialsDir = $"{COMMON_PATH}/{avatarName}/Materials";
             Directory.CreateDirectory(materialsDir); // creates full path if needed
 
             string destPath = $"{materialsDir}/{material.name}.mat";
@@ -109,7 +110,7 @@ namespace UniVCC
             // get file extension from source path
             string extension = Path.GetExtension(sourcePath);
 
-            string materialsDir = $"Assets/_UniVCC-Avatars/{avatarName}/Textures/{materialName}";
+            string materialsDir = $"{COMMON_PATH}/{avatarName}/Textures/{materialName}";
             Directory.CreateDirectory(materialsDir); // creates full path if needed
 
             string destPath = $"{materialsDir}/{tx.name}{extension}";
