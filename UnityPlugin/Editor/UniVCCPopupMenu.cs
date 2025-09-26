@@ -24,6 +24,7 @@ namespace UniVCC
         private string[] prefabList;
         private int selectedPrefabIndex = 0;
 
+        private bool setupSettings;
         private CopiedMaterials copySettings = new CopiedMaterials();
 
         private void OnEnable()
@@ -62,7 +63,6 @@ namespace UniVCC
             // Display the list of prefabs in a dropdown
             EditorGUILayout.LabelField("Select Asset Package", EditorStyles.boldLabel);
 
-
             int prevPackageIndex = selectedPackageIndex;
             selectedPackageIndex = EditorGUILayout.Popup(selectedPackageIndex, assetPackageNames);
 
@@ -80,9 +80,10 @@ namespace UniVCC
                 int prevPrefabIndex = selectedPrefabIndex;
                 selectedPrefabIndex = EditorGUILayout.Popup(selectedPrefabIndex, prefabNames);
 
-                if (prevPackageIndex != selectedPackageIndex || prevPrefabIndex != selectedPrefabIndex)
+                if (prevPackageIndex != selectedPackageIndex || prevPrefabIndex != selectedPrefabIndex || !setupSettings)
                 {
                     UpdateMaterialScanner();
+                    setupSettings = true;
                 }
             }
 
@@ -108,16 +109,23 @@ namespace UniVCC
                 EditorGUILayout.EndHorizontal();
 
                 EditorGUI.indentLevel++;
-                foreach (var item in copySettings.scanner.materials)
+                foreach (var renderer in copySettings.keysByRenderer)
                 {
-                    var key = item.Key;
-                    string name = key.name;
-                    bool value = copySettings.shouldCopy[item.Key];
-                    bool newValue = EditorGUILayout.Toggle(name, value);
-                    if (newValue != value)
+                    EditorGUILayout.LabelField(renderer.Key.name);
+                    EditorGUI.indentLevel++;
+
+                    foreach(var key in renderer.Value)
                     {
-                        copySettings.shouldCopy[key] = newValue;
+                        string name = key.name;
+                        bool value = copySettings.ShouldCopy(key);
+                        bool newValue = EditorGUILayout.Toggle(name, value);
+                        if (newValue != value)
+                        {
+                            copySettings.shouldCopy[key] = newValue;
+                        }
                     }
+
+                    EditorGUI.indentLevel--;
                 }
                 EditorGUI.indentLevel--;
             }
@@ -203,23 +211,37 @@ namespace UniVCC
         {
             public GatheringMaterialScanner scanner;
             public Dictionary<MaterialKey, bool> shouldCopy = new Dictionary<MaterialKey, bool>();
+            public Dictionary<Renderer, List<MaterialKey>> keysByRenderer = new Dictionary<Renderer, List<MaterialKey>>();
 
             public void SetScanner(GatheringMaterialScanner scanner)
             {
                 this.shouldCopy.Clear();
+                this.keysByRenderer.Clear();
                 this.scanner = scanner;
 
-                // Make all materials copied by default
-                foreach (var item in scanner.materials)
+                foreach(var renderer in scanner.renderers)
                 {
-                    shouldCopy.Add(item.Key, true);
+                    var originalMaterials = renderer.sharedMaterials;
+                    List<MaterialKey> keys = new List<MaterialKey>();
+                    foreach(var material in originalMaterials)
+                    {
+                        var mkey = MaterialKey.GetKeyFromMaterial(material);
+                        keys.Add(mkey);
+                        if(!shouldCopy.ContainsKey(mkey)) shouldCopy.Add(mkey, true);
+                    }
+                    keysByRenderer[renderer] = keys;
                 }
             }
 
             public bool ShouldCopy(Material mat)
             {
+                return ShouldCopy(MaterialKey.GetKeyFromMaterial(mat));
+            }
+
+            public bool ShouldCopy(MaterialKey mat)
+            {
                 bool copy = false;
-                shouldCopy.TryGetValue(MaterialKey.GetKeyFromMaterial(mat), out copy);
+                shouldCopy.TryGetValue(mat, out copy);
                 return copy;
             }
         }

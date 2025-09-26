@@ -242,6 +242,7 @@ namespace UniVCC
         public void Reset()
         {
             renderers.Clear();
+            materials.Clear();
         }
 
         public void Gather(Transform transform)
@@ -262,7 +263,7 @@ namespace UniVCC
 
                     if (!materials.ContainsKey(mkey))
                     {
-                        materials.Add(mkey, originalMaterials[i]);
+                        materials[mkey] = originalMaterials[i];
                     }
                 }
             }
@@ -273,39 +274,40 @@ namespace UniVCC
     {
         public GUID guid;
         public ulong localId;
+        public string path;
         public string name;
 
-        public MaterialKey(GUID guid, ulong localId, string name)
+        public MaterialKey(GUID guid, ulong localId, string path, string name)
         {
             this.guid = guid;
             this.localId = localId;
+            this.path = path;
             this.name = name;
         }
 
         public override int GetHashCode()
         {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 31 + guid.GetHashCode();
-                hash = hash * 31 + localId.GetHashCode();
-                return hash;
-            }
+            int hash = 17;
+            hash = hash * 31 + localId.GetHashCode();
+            hash = hash * 31 + guid.GetHashCode();
+            hash = hash * 31 + path.GetHashCode();
+            hash = hash * 31 + name.GetHashCode();
+            return hash;
         }
 
         public override bool Equals(object obj) =>
-            obj is MaterialKey other && guid.Equals(other.guid) && localId == other.localId;
+            obj is MaterialKey other && guid.Equals(other.guid) && localId == other.localId && name == other.name && path == other.path;
 
         public static MaterialKey GetKeyFromMaterial(Material material)
         {
             if (material == null)
-                return new MaterialKey(new GUID(), 0, "Unnamed");
+                return new MaterialKey(new GUID(), 0, "", "Unnamed");
             string path = AssetDatabase.GetAssetPath(material);
             if (string.IsNullOrEmpty(path))
-                return new MaterialKey(new GUID(), 0, "Unnamed");
+                return new MaterialKey(new GUID(), 0, "", "Unnamed");
             string guidStr = AssetDatabase.AssetPathToGUID(path);
             ulong localId = Unsupported.GetLocalIdentifierInFileForPersistentObject(material);
-            return new MaterialKey(new GUID(guidStr), localId, material.name);
+            return new MaterialKey(new GUID(guidStr), localId, path, material.name);
         }
     }
 
