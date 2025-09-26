@@ -1,8 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
-using System.IO;
 using VRC.SDK3.Avatars.Components;
-using System.Collections.Generic;
 
 namespace UniVCC
 {
@@ -22,7 +23,8 @@ namespace UniVCC
 
         private string[] prefabList;
         private int selectedPrefabIndex = 0;
-        private bool copyMaterials = true;
+
+        private CopiedMaterials copySettings = new CopiedMaterials();
 
         private void OnEnable()
         {
@@ -58,7 +60,10 @@ namespace UniVCC
             }
 
             // Display the list of prefabs in a dropdown
-            EditorGUILayout.LabelField("Select Asset Package");
+            EditorGUILayout.LabelField("Select Asset Package", EditorStyles.boldLabel);
+
+
+            int prevPackageIndex = selectedPackageIndex;
             selectedPackageIndex = EditorGUILayout.Popup(selectedPackageIndex, assetPackageNames);
 
             if (selectedPackageIndex >= 0 && selectedPackageIndex < assetPackages.Length)
@@ -71,11 +76,51 @@ namespace UniVCC
                     prefabNames[i] = Path.GetFileNameWithoutExtension(prefabList[i].Replace('|', '/'));
                 }
 
-                EditorGUILayout.LabelField("Select Asset Variant");
+                EditorGUILayout.LabelField("Select Asset Variant", EditorStyles.boldLabel);
+                int prevPrefabIndex = selectedPrefabIndex;
                 selectedPrefabIndex = EditorGUILayout.Popup(selectedPrefabIndex, prefabNames);
+
+                if (prevPackageIndex != selectedPackageIndex || prevPrefabIndex != selectedPrefabIndex)
+                {
+                    UpdateMaterialScanner();
+                }
             }
 
-            copyMaterials = EditorGUILayout.Toggle("Copy Materials", copyMaterials);
+            if (copySettings != null && copySettings.scanner != null)
+            {
+                EditorGUILayout.LabelField("Materials to Copy", EditorStyles.boldLabel);
+
+                EditorGUILayout.BeginHorizontal();
+                if (GUILayout.Button("Copy All"))
+                {
+                    foreach (var item in copySettings.scanner.materials)
+                    {
+                        copySettings.shouldCopy[item.Key] = true;
+                    }
+                }
+                if (GUILayout.Button("Copy None"))
+                {
+                    foreach (var item in copySettings.scanner.materials)
+                    {
+                        copySettings.shouldCopy[item.Key] = false;
+                    }
+                }
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUI.indentLevel++;
+                foreach (var item in copySettings.scanner.materials)
+                {
+                    var key = item.Key;
+                    string name = key.name;
+                    bool value = copySettings.shouldCopy[item.Key];
+                    bool newValue = EditorGUILayout.Toggle(name, value);
+                    if (newValue != value)
+                    {
+                        copySettings.shouldCopy[key] = newValue;
+                    }
+                }
+                EditorGUI.indentLevel--;
+            }
 
             // Create the 'Create' and 'Cancel' buttons
             GUILayout.Space(20);
@@ -103,12 +148,10 @@ namespace UniVCC
                 Debug.Log(instance);
                 if (instance != null)
                 {
-                    if(copyMaterials)
-                    {
-                        MaterialDuplicator duplicator = new MaterialDuplicator(data.packageName);
-                        duplicator.VisitGameObject(instance);
-                    }
-                    
+                    MaterialDuplicator duplicator = new MaterialDuplicator(data.packageName);
+                    duplicator.SetupDuplicator(m => copySettings.ShouldCopy(m));
+                    duplicator.VisitGameObject(instance);
+
                     Undo.RegisterCreatedObjectUndo(instance, "Create Prefab");
                     
                     if(Selection.activeGameObject != null && !data.isAvatar) instance.transform.SetParent(Selection.activeGameObject.transform, worldPositionStays: true);
@@ -116,6 +159,33 @@ namespace UniVCC
                 }
             }
             else Debug.LogError("Prefab not found: " + prefabName);
+        }
+
+        private GatheringMaterialScanner GatherPrefabMaterials(UniVCCAssetPackage data, string prefabName)
+        {
+            GameObject prefab = UniVCCAssetPackage.ResolvePrefab(prefabName, data);
+            if (prefab != null)
+            {
+                MaterialDuplicator duplicator = new MaterialDuplicator(data.packageName);
+                var scan = duplicator.SetupScanner();
+                duplicator.VisitGameObject(prefab);
+
+                return scan;
+            }
+            return null;
+        }
+
+        private void UpdateMaterialScanner()
+        {
+            if (selectedPackageIndex >= 0 && selectedPrefabIndex >= 0 &&
+                selectedPackageIndex < assetPackages.Length && selectedPrefabIndex < prefabList.Length)
+            {
+                var scan = GatherPrefabMaterials(assetPackages[selectedPackageIndex], prefabList[selectedPrefabIndex]);
+                if (scan != null)
+                {
+                    copySettings.SetScanner(scan);
+                }
+            }
         }
 
         private static bool HasDescriptorInParents(Transform tf)
@@ -127,6 +197,31 @@ namespace UniVCC
                 tf = tf.parent;
             }
             return false;
+        }
+
+        public class CopiedMaterials
+        {
+            public GatheringMaterialScanner scanner;
+            public Dictionary<MaterialKey, bool> shouldCopy = new Dictionary<MaterialKey, bool>();
+
+            public void SetScanner(GatheringMaterialScanner scanner)
+            {
+                this.shouldCopy.Clear();
+                this.scanner = scanner;
+
+                // Make all materials copied by default
+                foreach (var item in scanner.materials)
+                {
+                    shouldCopy.Add(item.Key, true);
+                }
+            }
+
+            public bool ShouldCopy(Material mat)
+            {
+                bool copy = false;
+                shouldCopy.TryGetValue(MaterialKey.GetKeyFromMaterial(mat), out copy);
+                return copy;
+            }
         }
     }
 }
