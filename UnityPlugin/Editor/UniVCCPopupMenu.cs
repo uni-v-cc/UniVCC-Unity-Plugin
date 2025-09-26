@@ -19,7 +19,6 @@ namespace UniVCC
 
         private int selectedPackageIndex = 0;
         private UniVCCAssetPackage[] assetPackages;
-        private string[] assetPackageNames;
 
         private string[] prefabList;
         private int selectedPrefabIndex = 0;
@@ -43,13 +42,6 @@ namespace UniVCC
                 return aviA.CompareTo(aviB);
             });
             assetPackages = packages.ToArray();
-
-            assetPackageNames = new string[assetPackages.Length];
-            for (int i = 0; i < assetPackages.Length; i++)
-            {
-                var package = assetPackages[i];
-                assetPackageNames[i] = string.IsNullOrEmpty(package.packageName) || "Unnamed".Equals(package.packageName) ? Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(package)) : package.packageName;
-            }
         }
 
         private void OnGUI()
@@ -63,8 +55,28 @@ namespace UniVCC
             // Display the list of prefabs in a dropdown
             EditorGUILayout.LabelField("Select Asset Package", EditorStyles.boldLabel);
 
+            List<string> assetPackageNames = new List<string>();
+            Dictionary<int, int> filterIndices = new Dictionary<int, int>();
+            Dictionary<int, int> revertIndices = new Dictionary<int, int>();
+
+            bool prefAvatar = Selection.activeGameObject == null || !HasDescriptorInParents(Selection.activeGameObject.transform);
+            for (int i = 0, j = 0; i < assetPackages.Length; i++)
+            {
+                var package = assetPackages[i];
+
+                if(!prefAvatar && package.isAvatar)
+                {
+                    continue;
+                }
+
+                filterIndices[i] = j;
+                revertIndices[j] = i;
+                assetPackageNames.Add(string.IsNullOrEmpty(package.packageName) || "Unnamed".Equals(package.packageName) ? Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(package)) : package.packageName);
+                ++j;
+            }
+
             int prevPackageIndex = selectedPackageIndex;
-            selectedPackageIndex = EditorGUILayout.Popup(selectedPackageIndex, assetPackageNames);
+            selectedPackageIndex = revertIndices[EditorGUILayout.Popup(filterIndices.ContainsKey(selectedPackageIndex) ? filterIndices[selectedPackageIndex] : 0, assetPackageNames.ToArray())];
 
             if (selectedPackageIndex >= 0 && selectedPackageIndex < assetPackages.Length)
             {

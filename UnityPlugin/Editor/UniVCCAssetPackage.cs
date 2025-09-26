@@ -34,7 +34,16 @@ namespace UniVCC
         public static GameObject ResolvePrefab(string prefabPath, UniVCCAssetPackage package)
         {
             string[] paths = prefabPath.Split(new[] { '|' });
-            string fullPath = Path.Combine(Path.GetDirectoryName(AssetDatabase.GetAssetPath(package)), paths[0].Replace('/', Path.DirectorySeparatorChar));
+            string fullPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(AssetDatabase.GetAssetPath(package)), paths[0].Replace('/', Path.DirectorySeparatorChar)));
+
+            string projectPath = Path.GetFullPath(Application.dataPath.Replace("Assets", ""));
+            if (!fullPath.StartsWith(projectPath))
+            {
+                Debug.LogWarning("Prefab path resolves outside project(" + projectPath + "): " + fullPath);
+                return null;
+            }
+
+            string assetRelativePath = fullPath.Substring(projectPath.Length).Replace(Path.DirectorySeparatorChar, '/');
 
             if (!File.Exists(fullPath))
             {
@@ -46,7 +55,7 @@ namespace UniVCC
             if (paths[0].EndsWith(".unity"))
             {
                 var sceneElementPath = paths[1];
-                var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(fullPath, UnityEditor.SceneManagement.OpenSceneMode.Additive);
+                var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(assetRelativePath, UnityEditor.SceneManagement.OpenSceneMode.Additive);
                 var gameObject = GameObject.Find(sceneElementPath);
                 UnityEditor.SceneManagement.EditorSceneManager.CloseScene(scene, true);
                 if (gameObject == null)
@@ -57,7 +66,9 @@ namespace UniVCC
                 return gameObject;
             }
 
-            return AssetDatabase.LoadAssetAtPath<GameObject>(fullPath);
+            Debug.Log("Loading prefab file: " + assetRelativePath);
+
+            return AssetDatabase.LoadAssetAtPath<GameObject>(assetRelativePath);
         }
     }
 }
