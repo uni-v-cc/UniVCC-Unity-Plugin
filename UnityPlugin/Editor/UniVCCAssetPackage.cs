@@ -36,7 +36,7 @@ namespace UniVCC
             string[] paths = prefabPath.Split(new[] { '|' });
             string fullPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(AssetDatabase.GetAssetPath(package)), paths[0].Replace('/', Path.DirectorySeparatorChar)));
 
-            string projectPath = Path.GetFullPath(Application.dataPath.Replace("Assets", ""));
+            string projectPath = Path.GetFullPath(Application.dataPath.Substring(0, Application.dataPath.Length - "Assets".Length));
             if (!fullPath.StartsWith(projectPath))
             {
                 Debug.LogWarning("Prefab path resolves outside project(" + projectPath + "): " + fullPath);
