@@ -9,7 +9,7 @@ namespace UniVCC
 {
     public class UniVCCPopupMenu : EditorWindow
     {
-        [MenuItem("GameObject/Uni-V.CC Asset", false, 0)]
+        [MenuItem("GameObject/Uni-VCC Asset", false, 0)]
         public static void CreatePrefabFromAssetPackage()
         {
             EditorWindow.GetWindow<UniVCCPopupMenu>("Select Asset").Show();
@@ -20,7 +20,7 @@ namespace UniVCC
         private int selectedPackageIndex = 0;
         private UniVCCAssetPackage[] assetPackages;
 
-        private string[] prefabList;
+        private ImportableAsset[] prefabList;
         private int selectedPrefabIndex = 0;
 
         private bool setupSettings;
@@ -80,12 +80,12 @@ namespace UniVCC
 
             if (selectedPackageIndex >= 0 && selectedPackageIndex < assetPackages.Length)
             {
-                prefabList = assetPackages[selectedPackageIndex].prefabs;
+                prefabList = assetPackages[selectedPackageIndex].GetImportableAssets().ToArray();
 
                 string[] prefabNames = new string[prefabList.Length];
                 for (int i = 0; i < prefabList.Length; i++)
                 {
-                    prefabNames[i] = Path.GetFileNameWithoutExtension(prefabList[i].Replace('|', '/'));
+                    prefabNames[i] = prefabList[i].displayName;
                 }
 
                 EditorGUILayout.LabelField("Select Asset Variant", EditorStyles.boldLabel);
@@ -107,22 +107,26 @@ namespace UniVCC
                 if (GUILayout.Button("Copy All"))
                 {
                     foreach (var item in copySettings.scanner.materials)
-                    {
                         copySettings.shouldCopy[item.Key] = true;
-                    }
+                }
+                if (GUILayout.Button("Default"))
+                {
+                    foreach (var item in copySettings.scanner.materials)
+                        if(copySettings.shouldCopyDefaults.ContainsKey(item.Key))
+                            copySettings.shouldCopy[item.Key] = copySettings.shouldCopyDefaults[item.Key];
                 }
                 if (GUILayout.Button("Copy None"))
                 {
                     foreach (var item in copySettings.scanner.materials)
-                    {
                         copySettings.shouldCopy[item.Key] = false;
-                    }
                 }
                 EditorGUILayout.EndHorizontal();
 
                 EditorGUI.indentLevel++;
                 foreach (var renderer in copySettings.keysByRenderer)
                 {
+                    if(renderer.Value.Count == 0) continue;
+
                     EditorGUILayout.LabelField(renderer.Key.name);
                     EditorGUI.indentLevel++;
 
@@ -144,6 +148,7 @@ namespace UniVCC
 
             // Create the 'Create' and 'Cancel' buttons
             GUILayout.Space(20);
+            EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Create"))
             {
                 if (selectedPackageIndex >= 0 && selectedPrefabIndex >= 0 && selectedPackageIndex < assetPackages.Length && selectedPrefabIndex < prefabList.Length)
@@ -156,11 +161,12 @@ namespace UniVCC
             {
                 Close();
             }
+            EditorGUILayout.EndHorizontal();
         }
 
-        private void CreatePrefab(UniVCCAssetPackage data, string prefabName)
+        private void CreatePrefab(UniVCCAssetPackage data, ImportableAsset prefabName)
         {
-            GameObject prefab = UniVCCAssetPackage.ResolvePrefab(prefabName, data);
+            GameObject prefab = prefabName.prefab;
             if (prefab != null)
             {
                 // Instantiate the prefab in the scene
@@ -168,22 +174,30 @@ namespace UniVCC
                 Debug.Log(instance);
                 if (instance != null)
                 {
-                    MaterialDuplicator duplicator = new MaterialDuplicator(data.packageName);
+                    MaterialDuplicator duplicator = new MaterialDuplicator(data.packageName + (prefabName.separateMaterialsFolder ? "/" + prefabName.displayName : ""));
                     duplicator.SetupDuplicator(m => copySettings.ShouldCopy(m));
                     duplicator.VisitGameObject(instance);
 
-                    Undo.RegisterCreatedObjectUndo(instance, "Create Prefab");
+                    AssetDatabase.Refresh();
                     
-                    if(Selection.activeGameObject != null && !data.isAvatar) instance.transform.SetParent(Selection.activeGameObject.transform, worldPositionStays: true);
+                    if(Selection.activeGameObject != null && !data.isAvatar)
+                    {
+                        instance.transform.SetParent(Selection.activeGameObject.transform, worldPositionStays: true);
+                        instance.transform.localPosition = Vector3.zero;
+                        instance.transform.localScale = Vector3.one;
+                        instance.transform.localRotation = Quaternion.identity;
+                    }
+
                     Selection.activeGameObject = instance;
+                    Undo.RegisterCreatedObjectUndo(instance, "Create Prefab");
                 }
             }
             else Debug.LogError("Prefab not found: " + prefabName);
         }
 
-        private GatheringMaterialScanner GatherPrefabMaterials(UniVCCAssetPackage data, string prefabName)
+        private GatheringMaterialScanner GatherPrefabMaterials(UniVCCAssetPackage data, ImportableAsset prefabName)
         {
-            GameObject prefab = UniVCCAssetPackage.ResolvePrefab(prefabName, data);
+            GameObject prefab = prefabName.prefab;
             if (prefab != null)
             {
                 MaterialDuplicator duplicator = new MaterialDuplicator(data.packageName);
@@ -203,7 +217,7 @@ namespace UniVCC
                 var scan = GatherPrefabMaterials(assetPackages[selectedPackageIndex], prefabList[selectedPrefabIndex]);
                 if (scan != null)
                 {
-                    copySettings.SetScanner(scan);
+                    copySettings.SetScanner(scan, prefabList[selectedPrefabIndex]);
                 }
             }
         }
@@ -223,26 +237,35 @@ namespace UniVCC
         {
             public GatheringMaterialScanner scanner;
             public Dictionary<MaterialKey, bool> shouldCopy = new Dictionary<MaterialKey, bool>();
+            public Dictionary<MaterialKey, bool> shouldCopyDefaults = new Dictionary<MaterialKey, bool>();
             public Dictionary<Renderer, List<MaterialKey>> keysByRenderer = new Dictionary<Renderer, List<MaterialKey>>();
 
-            public void SetScanner(GatheringMaterialScanner scanner)
+            public void SetScanner(GatheringMaterialScanner scanner, ImportableAsset asset)
             {
                 this.shouldCopy.Clear();
                 this.keysByRenderer.Clear();
+                this.shouldCopyDefaults.Clear();
                 this.scanner = scanner;
-
-                foreach(var renderer in scanner.renderers)
+                
+                foreach (var renderer in scanner.renderers)
                 {
                     var originalMaterials = renderer.sharedMaterials;
                     List<MaterialKey> keys = new List<MaterialKey>();
                     foreach(var material in originalMaterials)
                     {
+                        if(asset.uncopyableMaterials.Contains(material)) continue;
                         var mkey = MaterialKey.GetKeyFromMaterial(material);
                         keys.Add(mkey);
-                        if(!shouldCopy.ContainsKey(mkey)) shouldCopy.Add(mkey, true);
+                        if(!shouldCopy.ContainsKey(mkey))
+                        {
+                            bool cp = !asset.discouragedCopyableMaterials.Contains(material);
+                            this.shouldCopy.Add(mkey, cp);
+                            this.shouldCopyDefaults.Add(mkey, cp);
+                        }
                     }
                     keysByRenderer[renderer] = keys;
                 }
+
             }
 
             public bool ShouldCopy(Material mat)

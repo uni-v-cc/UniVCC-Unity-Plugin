@@ -1,14 +1,17 @@
 using UnityEditor;
 using UnityEngine;
 using System.IO;
+using System.Collections.Generic;
 
 namespace UniVCC
 {
-    [CreateAssetMenu(fileName = "UniVCCAssetPackage", menuName = "VRChat/Uni-V.CC/Asset Package")]
+    [CreateAssetMenu(fileName = "UniVCCAssetPackage", menuName = "VRChat/Uni-VCC/Asset Package")]
     public class UniVCCAssetPackage : ScriptableObject
     {
         public bool isAvatar = false;
         public string packageName = "Unnamed";
+
+        public ImportableAsset[] prefabList = new ImportableAsset[0];
         public string[] prefabs = new string[0];
 
         public static UniVCCAssetPackage[] GetAllAssetPackages()
@@ -27,14 +30,12 @@ namespace UniVCC
 
         public static string GetPrefabFile(string prefabPath, UniVCCAssetPackage package)
         {
-            string[] paths = prefabPath.Split(new[] { '|' });
-            return Path.Combine(Path.GetDirectoryName(AssetDatabase.GetAssetPath(package)), paths[0].Replace('/', Path.DirectorySeparatorChar));
+            return Path.Combine(Path.GetDirectoryName(AssetDatabase.GetAssetPath(package)), prefabPath.Replace('/', Path.DirectorySeparatorChar));
         }
 
-        public static GameObject ResolvePrefab(string prefabPath, UniVCCAssetPackage package)
+        private static GameObject ResolvePrefab(string prefabPath, UniVCCAssetPackage package)
         {
-            string[] paths = prefabPath.Split(new[] { '|' });
-            string fullPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(AssetDatabase.GetAssetPath(package)), paths[0].Replace('/', Path.DirectorySeparatorChar)));
+            string fullPath = GetPrefabFile(prefabPath, package);
 
             string projectPath = Path.GetFullPath(Application.dataPath.Substring(0, Application.dataPath.Length - "Assets".Length));
             if (!fullPath.StartsWith(projectPath))
@@ -51,24 +52,46 @@ namespace UniVCC
                 return null;
             }
 
-            // FIXME: not working
-            if (paths[0].EndsWith(".unity"))
-            {
-                var sceneElementPath = paths[1];
-                var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(assetRelativePath, UnityEditor.SceneManagement.OpenSceneMode.Additive);
-                var gameObject = GameObject.Find(sceneElementPath);
-                UnityEditor.SceneManagement.EditorSceneManager.CloseScene(scene, true);
-                if (gameObject == null)
-                {
-                    Debug.LogWarning("GameObject not found in scene: " + sceneElementPath);
-                    return null;
-                }
-                return gameObject;
-            }
-
             Debug.Log("Loading prefab file: " + assetRelativePath);
 
             return AssetDatabase.LoadAssetAtPath<GameObject>(assetRelativePath);
+        }
+
+        public void MigrateOldPrefabs()
+        {
+            if (prefabs == null || prefabs.Length == 0) return;
+
+            var list = new List<ImportableAsset>();
+            foreach (var path in prefabs)
+            {
+                var obj = ImportableAssetFromLegacy(path, this);
+                if (obj != null) list.Add(obj);
+            }
+            prefabList = list.ToArray();
+            prefabs = null;
+            EditorUtility.SetDirty(this);
+            AssetDatabase.SaveAssets();
+            Debug.Log("Migrated old prefab paths to ImportableAsset objects");
+        }
+
+        public List<ImportableAsset> GetImportableAssets()
+        {
+            List<ImportableAsset> all = new List<ImportableAsset>();
+            if (prefabs != null) // legacy code
+                foreach (var path in prefabs)
+                {
+                    var obj = ImportableAssetFromLegacy(path, this);
+                    if (obj != null) all.Add(obj);
+                }
+            all.AddRange(prefabList);
+            return all;
+        }
+
+        private static ImportableAsset ImportableAssetFromLegacy(string prefabPath, UniVCCAssetPackage package)
+        {
+            var obj = ResolvePrefab(prefabPath, package);
+            if (obj != null) return new ImportableAsset { prefab = obj, displayName = Path.GetFileNameWithoutExtension(prefabPath) };
+            return null;
         }
     }
 }

@@ -1,14 +1,14 @@
 {
   "name": "cc.uni-v.resolver",
-  "displayName": "Uni-V.CC - Resolver",
-  "version": "1.3.3",
+  "displayName": "Uni-VCC - Resolver",
+  "version": "2.0.0",
   "unity": "2022.3",
   "type": "tool",
   "description": "Automatic import of scenes & material management for packages.",
   "author": {
-    "name": "Uni-V.CC Developers",
-    "email": "hello@uni-v.cc",
-    "url": "https://uni-v.cc"
+    "name": "Uni-VCC Developers",
+    "email": "hello@uni-vcc.app",
+    "url": "https://uni-vcc.app"
   },
   "dependencies": {
     "com.unity.collections": "2.1.4",

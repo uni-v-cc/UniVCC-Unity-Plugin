@@ -8,7 +8,8 @@ namespace UniVCC
 {
     public class MaterialDuplicator
     {
-        public static readonly string COMMON_PATH = "Assets/!Uni-V.CC Packages";
+        public static readonly string LEGACY_PATH = "Assets/!Uni-V.CC Packages";
+        public static readonly string COMMON_PATH = "Assets/!Uni-VCC Packages";
         private List<IMaterialScanner> instances = new List<IMaterialScanner>();
         protected string avatarName;
 
@@ -68,19 +69,32 @@ namespace UniVCC
                 return material;
             }
 
+            if (sourcePath == "Resources/unity_builtin_extra")
+            {
+                Debug.LogWarning($"Material '{material.name}' is built-in. Skipping.");
+                return material;
+            }
+
             bool isEmbedded = !string.IsNullOrEmpty(sourcePath) && Path.GetExtension(sourcePath).ToLower() == ".fbx";
 
             string materialsDir = $"{COMMON_PATH}/{avatarName}/Materials";
+            string legacyMaterialsDir = $"{COMMON_PATH}/{avatarName}/Materials";
+
             Directory.CreateDirectory(materialsDir); // creates full path if needed
 
             string destPath = $"{materialsDir}/{material.name}.mat";
+            string legacyDestPath = $"{legacyMaterialsDir}/{material.name}.mat";
 
-            if (File.Exists(destPath))
+            string foundFile = null;
+            if(File.Exists(destPath)) foundFile = destPath;
+            else if(File.Exists(legacyDestPath)) foundFile = legacyDestPath;
+
+            if (foundFile != null)
             {
-                var mat = AssetDatabase.LoadAssetAtPath<Material>(destPath);
+                var mat = AssetDatabase.LoadAssetAtPath<Material>(foundFile);
                 if (mat != null)
                 {
-                    Debug.Log($"Material '{destPath}' already exists. Reusing!");
+                    Debug.Log($"Material '{foundFile}' already exists. Reusing!");
                     return mat;
                 }
             }
@@ -130,7 +144,6 @@ namespace UniVCC
 
             EditorUtility.SetDirty(newMaterial);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
 
             return newMaterial;
         }
@@ -150,16 +163,22 @@ namespace UniVCC
             string extension = Path.GetExtension(sourcePath);
 
             string materialsDir = $"{COMMON_PATH}/{avatarName}/Textures/{materialName}";
+            string legacyMaterialsDir = $"{LEGACY_PATH}/{avatarName}/Textures/{materialName}";
             Directory.CreateDirectory(materialsDir); // creates full path if needed
 
             string destPath = $"{materialsDir}/{tx.name}{extension}";
+            string legacyDestPath = $"{legacyMaterialsDir}/{tx.name}{extension}";
 
-            if (File.Exists(destPath))
+            string foundFile = null;
+            if (File.Exists(destPath)) foundFile = destPath;
+            else if (File.Exists(legacyDestPath)) foundFile = legacyDestPath;
+
+            if (foundFile != null)
             {
-                var tex = AssetDatabase.LoadAssetAtPath<Texture>(destPath);
+                var tex = AssetDatabase.LoadAssetAtPath<Texture>(foundFile);
                 if (tex != null)
                 {
-                    Debug.Log($"Texture '{destPath}' already exists. Reusing!");
+                    Debug.Log($"Texture '{foundFile}' already exists. Reusing!");
                     return tex;
                 }
             }
@@ -170,7 +189,6 @@ namespace UniVCC
 
             AssetDatabase.CopyAsset(sourcePath, destPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
 
             return AssetDatabase.LoadAssetAtPath<Texture>(destPath);
         }
@@ -217,6 +235,8 @@ namespace UniVCC
                 for (int i = 0; i < originalMaterials.Length; i++)
                 {
                     var omat = originalMaterials[i];
+                    if (omat == null) continue;
+
                     var mkey = MaterialKey.GetKeyFromMaterial(omat);
 
                     Material m;
