@@ -35,7 +35,7 @@ namespace UniVCC
 
         private static GameObject ResolvePrefab(string prefabPath, UniVCCAssetPackage package)
         {
-            string fullPath = GetPrefabFile(prefabPath, package);
+            string fullPath = Path.GetFullPath(GetPrefabFile(prefabPath, package));
 
             string projectPath = Path.GetFullPath(Application.dataPath.Substring(0, Application.dataPath.Length - "Assets".Length));
             if (!fullPath.StartsWith(projectPath))
