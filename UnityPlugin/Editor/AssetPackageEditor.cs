@@ -27,6 +27,8 @@ namespace UniVCC
         {
             UniVCCAssetPackage data = (UniVCCAssetPackage)target;
 
+            data.version = UniVCCAssetPackage.CurrentVersion;
+
             bool readOnly = AssetDatabase.GetAssetPath(data).ToLower().StartsWith("packages/");
             if(readOnly)
                 EditorGUILayout.HelpBox("This asset package is imported as package, and can not be modified.", MessageType.Info);
@@ -77,13 +79,32 @@ namespace UniVCC
             }
 
             SerializedProperty arrayProp = serializedObject.FindProperty("prefabList");
-            EditorGUILayout.PropertyField(arrayProp, includeChildren: true);
-            for (int i = 0; i < data.prefabList.Length; i++)
+            for (int i = 0; i < arrayProp.arraySize; i++)
             {
-                var entry = data.prefabList[i];
-                if (entry != null && !FilesHelper.IsValidName(entry.displayName)) 
-                    EditorGUILayout.HelpBox($"Prefab #{i + 1} ({entry.displayName}) has an invalid display name.", MessageType.Error);
+                SerializedProperty elementProp = arrayProp.GetArrayElementAtIndex(i);
+
+                if (elementProp != null)
+                {
+                    SerializedProperty storageSO = elementProp.FindPropertyRelative("storage");
+
+                    serializedObject.Update();
+                    string path = MaterialDuplicator.COMMON_PATH + "/" + data.prefabList[i].GetSubPath(data);
+
+                    var sp = storageSO.FindPropertyRelative("finalPath");
+                    if(!string.Equals(sp.stringValue, path))
+                    {
+                        sp.stringValue = path;
+                        serializedObject.ApplyModifiedProperties();
+                    }
+
+                    string displayName = elementProp.FindPropertyRelative("displayName").stringValue;
+                    if (!FilesHelper.IsValidName(displayName)) EditorGUILayout.HelpBox($"Prefab #{i + 1} ({displayName}) has an invalid display name.", MessageType.Error);
+
+                    string rfn = storageSO.FindPropertyRelative("separateFolderName").stringValue;
+                    if (!string.IsNullOrEmpty(rfn) && !FilesHelper.IsValidName(rfn)) EditorGUILayout.HelpBox($"Prefab #{i + 1} ({displayName}) has an invalid separate folder name ({rfn}).", MessageType.Error);
+                }
             }
+            EditorGUILayout.PropertyField(arrayProp, includeChildren: true);
             serializedObject.ApplyModifiedProperties();
 
             EditorGUI.EndDisabledGroup();

@@ -164,23 +164,22 @@ namespace UniVCC
             EditorGUILayout.EndHorizontal();
         }
 
-        private void CreatePrefab(UniVCCAssetPackage data, ImportableAsset prefabName)
+        private void CreatePrefab(UniVCCAssetPackage pkg, ImportableAsset variant)
         {
-            GameObject prefab = prefabName.prefab;
+            GameObject prefab = variant.prefab;
             if (prefab != null)
             {
                 // Instantiate the prefab in the scene
                 GameObject instance = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
-                Debug.Log(instance);
                 if (instance != null)
                 {
-                    MaterialDuplicator duplicator = new MaterialDuplicator(data.packageName + (prefabName.separateMaterialsFolder ? "/" + prefabName.displayName : ""));
+                    MaterialDuplicator duplicator = new MaterialDuplicator(variant.GetSubPath(pkg));
                     duplicator.SetupDuplicator(m => copySettings.ShouldCopy(m));
                     duplicator.VisitGameObject(instance);
 
                     AssetDatabase.Refresh();
                     
-                    if(Selection.activeGameObject != null && !data.isAvatar)
+                    if(Selection.activeGameObject != null && !pkg.isAvatar)
                     {
                         instance.transform.SetParent(Selection.activeGameObject.transform, worldPositionStays: true);
                         instance.transform.localPosition = Vector3.zero;
@@ -192,15 +191,15 @@ namespace UniVCC
                     Undo.RegisterCreatedObjectUndo(instance, "Create Prefab");
                 }
             }
-            else Debug.LogError("Prefab not found: " + prefabName);
+            else Debug.LogError("Prefab not found: " + variant.displayName);
         }
 
-        private GatheringMaterialScanner GatherPrefabMaterials(UniVCCAssetPackage data, ImportableAsset prefabName)
+        private GatheringMaterialScanner GatherPrefabMaterials(UniVCCAssetPackage pkg, ImportableAsset variant)
         {
-            GameObject prefab = prefabName.prefab;
+            GameObject prefab = variant.prefab;
             if (prefab != null)
             {
-                MaterialDuplicator duplicator = new MaterialDuplicator(data.packageName);
+                MaterialDuplicator duplicator = new MaterialDuplicator(variant.GetSubPath(pkg));
                 var scan = duplicator.SetupScanner();
                 duplicator.VisitGameObject(prefab);
 

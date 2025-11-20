@@ -8,6 +8,10 @@ namespace UniVCC
     [CreateAssetMenu(fileName = "UniVCCAssetPackage", menuName = "VRChat/Uni-VCC/Asset Package")]
     public class UniVCCAssetPackage : ScriptableObject
     {
+        public static readonly int CurrentVersion = 002_001_000;
+
+        public int version = CurrentVersion;
+
         public bool isAvatar = false;
         public string packageName = "Unnamed";
 

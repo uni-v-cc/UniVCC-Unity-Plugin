@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System;
-using UnityEditor;
 using UnityEngine;
 
 namespace UniVCC
@@ -11,11 +10,11 @@ namespace UniVCC
         [Tooltip("Display name for this asset")]
         public string displayName = "Unnamed Asset";
 
-        [Tooltip("Should a separate folder be allocated for materials and textures for this asset variant?")]
-        public bool separateMaterialsFolder = false;
-
         [Tooltip("Prefab to include in this package")]
         public GameObject prefab;
+
+        [Tooltip("Where the materials and textures should be copied to")]
+        public AssetResourceStorage storage = new AssetResourceStorage();
 
         [Tooltip("Materials that should not get copied")]
         public List<Material> uncopyableMaterials = new List<Material>();
@@ -23,10 +22,9 @@ namespace UniVCC
         [Tooltip("Materials that should default to not copied")]
         public List<Material> discouragedCopyableMaterials = new List<Material>();
 
-        public string GetAssetPath()
+        public string GetSubPath(UniVCCAssetPackage package)
         {
-            if (prefab == null) return null;
-            return AssetDatabase.GetAssetPath(prefab);
+            return storage.GetSubPath(package, this);
         }
     }
 }
