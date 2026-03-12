@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
@@ -44,8 +45,12 @@ namespace UniVCC
             assetPackages = packages.ToArray();
         }
 
+        private Vector2 scroll;
+
         private void OnGUI()
         {
+            scroll = EditorGUILayout.BeginScrollView(scroll);
+
             if (assetPackages.Length == 0)
             {
                 EditorGUILayout.LabelField("No UniVCCAssetPackage found.");
@@ -122,25 +127,35 @@ namespace UniVCC
                 }
                 EditorGUILayout.EndHorizontal();
 
+                GUIStyle style = new GUIStyle(GUI.skin.label);
+                style.richText = true;
+
+                GUIStyle tstyle = new GUIStyle(GUI.skin.toggle);
+                tstyle.richText = true;
+
                 EditorGUI.indentLevel++;
-                foreach (var renderer in copySettings.keysByRenderer)
+                foreach (var material in copySettings.renderersByMaterial)
                 {
-                    if(renderer.Value.Count == 0) continue;
+                    MaterialKey key = material.Key;
 
-                    EditorGUILayout.LabelField(renderer.Key.name);
-                    EditorGUI.indentLevel++;
+                    bool value = copySettings.ShouldCopy(key);
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField($"<b>{key.name}</b>", style);
+                    bool newValue = EditorGUILayout.Toggle("", value);
+                    EditorGUILayout.EndHorizontal();
+                    if (newValue != value) copySettings.shouldCopy[key] = newValue;
 
-                    foreach(var key in renderer.Value)
+                    StringBuilder names = new StringBuilder();
+                    foreach (var renderer in material.Value)
                     {
-                        string name = key.name;
-                        bool value = copySettings.ShouldCopy(key);
-                        bool newValue = EditorGUILayout.Toggle(name, value);
-                        if (newValue != value)
-                        {
-                            copySettings.shouldCopy[key] = newValue;
-                        }
+                        names.Append(renderer.name);
+                        names.Append(", ");
                     }
 
+                    if (names.Length > 2) names.Length -= 2;
+
+                    EditorGUI.indentLevel++;
+                    EditorGUILayout.LabelField($"From <i>{names.ToString()}</i>", style);
                     EditorGUI.indentLevel--;
                 }
                 EditorGUI.indentLevel--;
@@ -162,6 +177,7 @@ namespace UniVCC
                 Close();
             }
             EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndScrollView();
         }
 
         private void CreatePrefab(UniVCCAssetPackage pkg, ImportableAsset variant)
@@ -173,6 +189,8 @@ namespace UniVCC
                 GameObject instance = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
                 if (instance != null)
                 {
+                    instance.transform.localPosition = Vector3.zero;
+
                     MaterialDuplicator duplicator = new MaterialDuplicator(variant.GetSubPath(pkg));
                     duplicator.SetupDuplicator(m => copySettings.ShouldCopy(m));
                     duplicator.VisitGameObject(instance);
@@ -182,7 +200,6 @@ namespace UniVCC
                     if(Selection.activeGameObject != null && !pkg.isAvatar)
                     {
                         instance.transform.SetParent(Selection.activeGameObject.transform, worldPositionStays: true);
-                        instance.transform.localPosition = Vector3.zero;
                         instance.transform.localScale = Vector3.one;
                         instance.transform.localRotation = Quaternion.identity;
                     }
@@ -237,12 +254,12 @@ namespace UniVCC
             public GatheringMaterialScanner scanner;
             public Dictionary<MaterialKey, bool> shouldCopy = new Dictionary<MaterialKey, bool>();
             public Dictionary<MaterialKey, bool> shouldCopyDefaults = new Dictionary<MaterialKey, bool>();
-            public Dictionary<Renderer, List<MaterialKey>> keysByRenderer = new Dictionary<Renderer, List<MaterialKey>>();
+            public Dictionary<MaterialKey, List<Renderer>> renderersByMaterial = new Dictionary<MaterialKey, List<Renderer>>();
 
             public void SetScanner(GatheringMaterialScanner scanner, ImportableAsset asset)
             {
                 this.shouldCopy.Clear();
-                this.keysByRenderer.Clear();
+                this.renderersByMaterial.Clear();
                 this.shouldCopyDefaults.Clear();
                 this.scanner = scanner;
                 
@@ -261,8 +278,10 @@ namespace UniVCC
                             this.shouldCopy.Add(mkey, cp);
                             this.shouldCopyDefaults.Add(mkey, cp);
                         }
+                        if(!renderersByMaterial.ContainsKey(mkey))
+                            renderersByMaterial.Add(mkey, new List<Renderer>());
+                        renderersByMaterial[mkey].Add(renderer);
                     }
-                    keysByRenderer[renderer] = keys;
                 }
 
             }
